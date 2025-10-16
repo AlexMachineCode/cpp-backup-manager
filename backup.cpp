@@ -15,7 +15,7 @@ time_t getFileModTime(const std::string& path) {
   return 0;
 }
 
-// -- Função de Backup (COMPLETA E CORRIGIDA) --
+// -- Função de Backup (sem alterações) --
 int realizaBackup(const std::string& destino_path) {
   assert(!destino_path.empty());
   std::ifstream param_file("Backup.parm");
@@ -42,29 +42,10 @@ int realizaBackup(const std::string& destino_path) {
     }
   }
   param_file.close();
-  return OPERACAO_SUCESSO;  // <-- O RETURN QUE FALTAVA!
+  return OPERACAO_SUCESSO;
 }
 
-// -- Função de Restauração (COMPLETA E DOCUMENTADA) --
-/******************************************************************************
- * @brief Função: realizaRestauracao
- * @details
- * Inicia o processo de restauração de arquivos de uma origem (pendrive) para
- * o diretório local (HD). A lógica é guiada pela Tabela de Decisão.
- *
- * @param origem_path O caminho para o diretório de origem (o "pendrive").
- *
- * @return
- * Retorna um código de status da enumeração StatusOperacao.
- * - ERRO_ORIGEM_MAIS_ANTIGA: Se um arquivo na origem for mais antigo que o
- * do destino durante uma restauração.
- *
- * @assertiva-entrada
- * - origem_path não deve ser um caminho vazio.
- *
- * @assertiva-saida
- * - Se retornar um erro, o diretório de destino (HD) não foi modificado.
- ******************************************************************************/
+// -- Função de Restauração (COM A NOVA LÓGICA DE CÓPIA) --
 int realizaRestauracao(const std::string& origem_path) {
   assert(!origem_path.empty());
   std::ifstream param_file("Backup.parm");
@@ -77,12 +58,21 @@ int realizaRestauracao(const std::string& origem_path) {
     std::string dest_path = nome_arquivo;
     time_t data_origem = getFileModTime(source_path);
     time_t data_destino = getFileModTime(dest_path);
+
     if (data_origem < data_destino) {
       param_file.close();
       return ERRO_ORIGEM_MAIS_ANTIGA;
+    } else if (data_origem > data_destino) {
+      // LÓGICA NOVA: A origem é mais nova, então copia para o destino (HD).
+      std::ifstream src(source_path, std::ios::binary);
+      assert(src.is_open());
+      std::ofstream dst(dest_path, std::ios::binary);
+      assert(dst.is_open());
+      dst << src.rdbuf();
+      src.close();
+      dst.close();
     }
-    // NOTA: Se as datas forem iguais, (data_origem < data_destino) é falso
-    // e nada é feito, o que está correto para este caso ("Faz nada").
+    // Se as datas forem iguais, não faz nada.
   }
   param_file.close();
   return OPERACAO_SUCESSO;
