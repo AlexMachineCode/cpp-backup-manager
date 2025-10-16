@@ -1,0 +1,78 @@
+Trabalho Prático 2 — Sistema de Backup e Restauração
+Autor: Alex Batista Resende
+Ano: 2025
+
+=====================================================================
+1. Objetivo
+---------------------------------------------------------------------
+O objetivo deste trabalho foi desenvolver um sistema de backup e restauração
+em C++, utilizando o processo de desenvolvimento orientado a testes (TDD),
+garantindo a integridade e atualização dos arquivos entre o diretório principal
+(HD) e o diretório de destino (pendrive).
+
+=====================================================================
+2. Metodologia (TDD)
+---------------------------------------------------------------------
+O desenvolvimento seguiu o ciclo TDD:
+
+1. Escrever o teste (vermelho)
+2. Implementar o código mínimo para passar o teste (verde)
+3. Refatorar o código mantendo todos os testes passando (refactor)
+
+Cada coluna do histórico de commits representa um ciclo de TDD completo.
+Os testes foram implementados no arquivo `testa_backup.cpp` utilizando o
+framework Catch2.
+
+=====================================================================
+3. Estrutura do Projeto
+---------------------------------------------------------------------
+- backup.hpp         → Declarações e enumeração de códigos de erro.
+- backup.cpp         → Implementação das funções principais do sistema.
+- testa_backup.cpp   → Conjunto completo de testes automatizados.
+- Makefile           → Automação da compilação e execução dos testes.
+- Backup.parm        → Arquivo de parâmetros usado nos testes.
+- Backup.log         → Arquivo de log gerado durante o backup.
+
+=====================================================================
+4. Principais Casos de Teste
+---------------------------------------------------------------------
+ Backup falha se o arquivo Backup.parm não existir.
+ Backup copia arquivo novo do HD para o pendrive.
+ Backup sobrescreve arquivo antigo no pendrive.
+ Backup não copia arquivos com datas iguais.
+ Backup gera erro se o destino for mais novo.
+ Restauração gera erro se a origem for mais antiga.
+ Restauração copia arquivo do pendrive para o HD se for mais novo.
+ Erro se arquivo de origem não existir.
+ Erro se destino não tiver permissão de escrita.
+ Log de operações e resumo com contagens corretas.
+
+=====================================================================
+5. Enum de Códigos de Status
+---------------------------------------------------------------------
+OPERACAO_SUCESSO               (0)
+ERRO_BACKUP_PARM_NAO_EXISTE    (1)
+ERRO_DESTINO_MAIS_NOVO         (2)
+ERRO_ORIGEM_MAIS_ANTIGA        (3)
+ERRO_ARQUIVO_ORIGEM_NAO_EXISTE (4)
+ERRO_SEM_PERMISSAO             (5)
+
+=====================================================================
+6. Evidências de Testes
+---------------------------------------------------------------------
+- Todos os testes foram executados via Makefile.
+- A saída final do comando `make` foi:
+
+  "===============================================================================
+   All tests passed (19 assertions in 13 test cases)
+   ==============================================================================="
+
+Isso comprova que todas as funcionalidades e casos de erro foram
+implementados corretamente.
+
+=====================================================================
+7. Conclusão
+---------------------------------------------------------------------
+O sistema de backup e restauração foi totalmente implementado com sucesso,
+seguindo o processo TDD. O código final é modular, documentado e validado
+por testes automatizados cobrindo todos os cenários previstos no enunciado.
