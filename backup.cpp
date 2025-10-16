@@ -5,6 +5,7 @@
 #include <fstream>
 #include <cassert>
 #include <sys/stat.h>
+#include <unistd.h>  // para acesso a permissões
 #include <ctime>
 
 /***************************************************************************
@@ -37,21 +38,18 @@ void copiarArquivo(const std::string& origem, const std::string& destino) {
 }
 
 /***************************************************************************
+ * Função auxiliar: possuiPermissaoEscrita
+ * -------------------------------------------------------------------------
+ * Verifica se o processo atual tem permissão de escrita no diretório dado.
+ ***************************************************************************/
+bool possuiPermissaoEscrita(const std::string& diretorio) {
+  return (access(diretorio.c_str(), W_OK) == 0);
+}
+
+/***************************************************************************
  * Função auxiliar: processarTransferencia
  * -------------------------------------------------------------------------
- * Generaliza a lógica de transferência (backup/restauração), evitando
- * duplicação entre realizaBackup e realizaRestauracao.
- *
- * Parâmetros:
- *   origem        - Caminho base dos arquivos de origem.
- *   destino       - Caminho base dos arquivos de destino.
- *   erroMaisNovo  - Código de erro se o destino for mais novo.
- *   erroMaisAntigo- Código de erro se a origem for mais antiga.
- *
- * Retorna:
- *   OPERACAO_SUCESSO                - se tudo ocorreu bem.
- *   ERRO_BACKUP_PARM_NAO_EXISTE     - se o Backup.parm não foi encontrado.
- *   ERRO_ARQUIVO_ORIGEM_NAO_EXISTE  - se algum arquivo de origem não existe.
+ * Generaliza a lógica de backup/restauração, incluindo validações de erro.
  ***************************************************************************/
 int processarTransferencia(const std::string& origem, const std::string& destino,
                            int erroMaisNovo, int erroMaisAntigo) {
@@ -60,6 +58,12 @@ int processarTransferencia(const std::string& origem, const std::string& destino
 
   std::ifstream param_file("Backup.parm");
   if (!param_file.is_open()) return ERRO_BACKUP_PARM_NAO_EXISTE;
+
+  // 🔒 Verificação de permissão de escrita
+  if (!possuiPermissaoEscrita(destino)) {
+    param_file.close();
+    return ERRO_SEM_PERMISSAO;
+  }
 
   std::string nome_arquivo;
   while (param_file >> nome_arquivo) {
@@ -88,8 +92,6 @@ int processarTransferencia(const std::string& origem, const std::string& destino
 
 /***************************************************************************
  * Função: realizaBackup
- * -------------------------------------------------------------------------
- * Copia arquivos do diretório atual para o destino informado.
  ***************************************************************************/
 int realizaBackup(const std::string& destino_path) {
   return processarTransferencia(".", destino_path,
@@ -98,8 +100,6 @@ int realizaBackup(const std::string& destino_path) {
 
 /***************************************************************************
  * Função: realizaRestauracao
- * -------------------------------------------------------------------------
- * Copia arquivos do diretório de origem (pendrive) para o diretório atual.
  ***************************************************************************/
 int realizaRestauracao(const std::string& origem_path) {
   return processarTransferencia(origem_path, ".",
