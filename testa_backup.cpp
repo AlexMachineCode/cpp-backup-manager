@@ -42,3 +42,32 @@ TEST_CASE("Backup copia arquivo novo do HD para o Pendrive", "[backup-sucesso]")
   remove("pendrive/arquivo1.txt");
   rmdir("pendrive");
 }
+
+
+
+TEST_CASE("Backup sobrescreve arquivo antigo no Pendrive", "[backup-atualiza]") {
+  // --- PREPARAÇÃO DO CENÁRIO ---
+  mkdir("pendrive", 0777);
+  std::ofstream("Backup.parm") << "arquivo_modificado.txt";
+  std::ofstream("arquivo_modificado.txt") << "conteudonovo";  // Sem espaço
+  std::ofstream("pendrive/arquivo_modificado.txt") << "conteudoantigo"; // Sem espaço
+
+  // --- AÇÃO ---
+  realizaBackup("pendrive");
+
+  // --- VERIFICAÇÃO ---
+  // Forma correta de ler o conteúdo inteiro de um arquivo pequeno
+  std::ifstream arquivo_atualizado("pendrive/arquivo_modificado.txt");
+  std::stringstream buffer;
+  buffer << arquivo_atualizado.rdbuf();
+  std::string conteudo_final = buffer.str();
+
+  // Este REQUIRE agora vai falhar, pois o conteúdo lido será "conteudoantigo"
+  REQUIRE(conteudo_final == "conteudonovo");
+
+  // --- LIMPEZA ---
+  remove("Backup.parm");
+  remove("arquivo_modificado.txt");
+  remove("pendrive/arquivo_modificado.txt");
+  rmdir("pendrive");
+}
