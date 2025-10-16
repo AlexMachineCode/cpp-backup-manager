@@ -64,3 +64,33 @@ TEST_CASE("Backup sobrescreve arquivo antigo no Pendrive", "[backup-atualiza]") 
   remove("pendrive/arquivo_modificado.txt");
   rmdir("pendrive");
 }
+
+
+
+
+TEST_CASE("Backup nao copia arquivos com datas iguais", "[backup-data-igual]") {
+  // --- PREPARAÇÃO DO CENÁRIO ---
+  mkdir("pendrive", 0777);
+  std::ofstream("Backup.parm") << "arquivo_data_igual.txt";
+
+  std::ofstream("arquivo_data_igual.txt") << "conteudonovo";
+  // CORREÇÃO AQUI: o conteúdo antigo não tem hífen.
+  std::ofstream("pendrive/arquivo_data_igual.txt") << "conteudoantigo";
+
+  // --- AÇÃO ---
+  realizaBackup("pendrive");
+
+  // --- VERIFICAÇÃO ---
+  std::ifstream arquivo_atualizado("pendrive/arquivo_data_igual.txt");
+  std::stringstream buffer;
+  buffer << arquivo_atualizado.rdbuf();
+  std::string conteudo_final = buffer.str();
+
+  REQUIRE(conteudo_final == "conteudoantigo");
+
+  // --- LIMPEZA ---
+  remove("Backup.parm");
+  remove("arquivo_data_igual.txt");
+  remove("pendrive/arquivo_data_igual.txt");
+  rmdir("pendrive");
+}
