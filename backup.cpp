@@ -63,7 +63,9 @@ int realizaBackup(const std::string& destino_path) {
       src.close();
       dst.close();
     }
-
+    // NOTA DA REFATORAÇÃO: Se as datas forem iguais, (data_origem > data_destino)
+    // é falso, e a cópia não é realizada. Isso está correto
+    // conforme a Coluna 4 da Tabela de Decisão ("Faz nada").
   }
 
   param_file.close();
