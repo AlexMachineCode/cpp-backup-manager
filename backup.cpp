@@ -51,7 +51,7 @@ int realizaBackup(const std::string& destino_path) {
 
     // A cópia só ocorre se o arquivo de destino não existe (data 0)
     // ou se a data do arquivo de origem for mais recente.
-    if (data_origem >= data_destino) {
+    if (data_origem > data_destino) {
       std::ifstream src(source_path, std::ios::binary);
       assert(src.is_open());
 
@@ -63,6 +63,7 @@ int realizaBackup(const std::string& destino_path) {
       src.close();
       dst.close();
     }
+
   }
 
   param_file.close();
