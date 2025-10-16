@@ -5,15 +5,13 @@
 #include <fstream>
 #include <cassert>
 #include <sys/stat.h>
-#include <unistd.h>   // Para função access()
 #include <ctime>
-#include <iomanip>    // Para std::put_time
-#include <sstream>
+#include <cerrno>
+#include <cstring>
+#include <iostream>
 
 /***************************************************************************
  * Função: getFileModTime
- * -------------------------------------------------------------------------
- * Retorna o tempo de modificação de um arquivo no sistema.
  ***************************************************************************/
 time_t getFileModTime(const std::string& path) {
   assert(!path.empty());
@@ -26,132 +24,118 @@ time_t getFileModTime(const std::string& path) {
 
 /***************************************************************************
  * Função: copiarArquivo
- * -------------------------------------------------------------------------
- * Copia o conteúdo de um arquivo de origem para um destino.
  ***************************************************************************/
 void copiarArquivo(const std::string& origem, const std::string& destino) {
   assert(!origem.empty());
   assert(!destino.empty());
+
+  // Garante que o diretório de destino existe
+  size_t pos = destino.find_last_of('/');
+  if (pos != std::string::npos) {
+    std::string dir = destino.substr(0, pos);
+    mkdir(dir.c_str(), 0777);
+  }
+
   std::ifstream src(origem, std::ios::binary);
   assert(src.is_open());
+
   std::ofstream dst(destino, std::ios::binary);
-  assert(dst.is_open());
+  if (!dst.is_open()) {
+    std::cerr << "[ERRO] Não foi possível criar destino: "
+              << destino << " (errno=" << errno << ")\n";
+    return;
+  }
+
   dst << src.rdbuf();
-}
-
-/***************************************************************************
- * Função: possuiPermissaoEscrita
- * -------------------------------------------------------------------------
- * Verifica se o processo atual tem permissão de escrita em um diretório.
- ***************************************************************************/
-bool possuiPermissaoEscrita(const std::string& diretorio) {
-  assert(!diretorio.empty());
-  return (access(diretorio.c_str(), W_OK) == 0);
-}
-
-/***************************************************************************
- * Função: obterTimestampAtual
- * -------------------------------------------------------------------------
- * Retorna a data/hora atual formatada no padrão dd/mm/yyyy HH:MM:SS.
- ***************************************************************************/
-std::string obterTimestampAtual() {
-  std::ostringstream os;
-  std::time_t agora = std::time(nullptr);
-  std::tm* tempo = std::localtime(&agora);
-  os << std::put_time(tempo, "%d/%m/%Y %H:%M:%S");
-  return os.str();
-}
-
-/***************************************************************************
- * Função: registrarLog
- * -------------------------------------------------------------------------
- * Registra uma linha no arquivo Backup.log, padronizando o formato.
- * Parâmetros:
- *   contexto  - Tipo de operação ("BACKUP" ou "RESTAURACAO")
- *   arquivo   - Nome do arquivo afetado
- *   mensagem  - Resultado textual (ex: "COPIADO", "IGNORADO", "ERRO...")
- ***************************************************************************/
-void registrarLog(const std::string& contexto,
-                  const std::string& arquivo,
-                  const std::string& mensagem) {
-  std::ofstream log("Backup.log", std::ios::app);
-  if (!log.is_open()) return;
-
-  log << "[" << obterTimestampAtual() << "] "
-      << "[" << contexto << "] "
-      << arquivo << " → " << mensagem << std::endl;
-}
-
-/***************************************************************************
- * Função auxiliar: processarTransferencia
- * -------------------------------------------------------------------------
- * Generaliza a lógica comum de backup/restauração,
- * incluindo validações de permissão, existência, data e logs.
- ***************************************************************************/
-int processarTransferencia(const std::string& origem,
-                           const std::string& destino,
-                           int erroMaisNovo,
-                           int erroMaisAntigo,
-                           const std::string& contexto) {
-  assert(!origem.empty());
-  assert(!destino.empty());
-
-  std::ifstream param_file("Backup.parm");
-  if (!param_file.is_open()) {
-    registrarLog(contexto, "Backup.parm",
-                 "ERRO: arquivo de parametros nao encontrado");
-    return ERRO_BACKUP_PARM_NAO_EXISTE;
-  }
-
-  if (!possuiPermissaoEscrita(destino)) {
-    registrarLog(contexto, destino, "ERRO: sem permissao de escrita");
-    param_file.close();
-    return ERRO_SEM_PERMISSAO;
-  }
-
-  std::string nome_arquivo;
-  while (param_file >> nome_arquivo) {
-    const std::string path_origem = origem + "/" + nome_arquivo;
-    const std::string path_destino = destino + "/" + nome_arquivo;
-
-    const time_t data_origem = getFileModTime(path_origem);
-    const time_t data_destino = getFileModTime(path_destino);
-
-    if (data_origem == 0) {
-      registrarLog(contexto, nome_arquivo,
-                   "ERRO: arquivo de origem inexistente");
-      param_file.close();
-      return ERRO_ARQUIVO_ORIGEM_NAO_EXISTE;
-    }
-
-    if (data_origem > data_destino) {
-      copiarArquivo(path_origem, path_destino);
-      registrarLog(contexto, nome_arquivo, "COPIADO");
-    } else if (data_destino > data_origem) {
-      registrarLog(contexto, nome_arquivo, "IGNORADO (destino mais novo)");
-      param_file.close();
-      return (erroMaisNovo != 0) ? erroMaisNovo : erroMaisAntigo;
-    } else {
-      registrarLog(contexto, nome_arquivo, "IGNORADO (datas iguais)");
-    }
-  }
-
-  param_file.close();
-  return OPERACAO_SUCESSO;
 }
 
 /***************************************************************************
  * Função: realizaBackup
  ***************************************************************************/
 int realizaBackup(const std::string& destino_path) {
-  return processarTransferencia(".", destino_path,
-                                ERRO_DESTINO_MAIS_NOVO, 0, "BACKUP");
-}
+  assert(!destino_path.empty());
 
+  std::ifstream param_file("Backup.parm");
+  if (!param_file.is_open()) return ERRO_BACKUP_PARM_NAO_EXISTE;
+
+  std::ofstream log("Backup.log", std::ios::app);
+  int copiados = 0, ignorados = 0, erros = 0;
+  int codigo_final = OPERACAO_SUCESSO;
+
+  std::string nome_arquivo;
+  while (param_file >> nome_arquivo) {
+    const std::string source_path = nome_arquivo;
+    const std::string dest_path = destino_path + "/" + nome_arquivo;
+
+    const time_t data_origem = getFileModTime(source_path);
+    if (data_origem == 0) {
+      erros++;
+      log << "[ERRO] Arquivo nao encontrado: " << source_path << std::endl;
+      codigo_final = ERRO_ARQUIVO_ORIGEM_NAO_EXISTE;
+      continue; // <--- IMPORTANTE: não sai da função
+    }
+
+    struct stat st;
+    if (stat(destino_path.c_str(), &st) != 0 || !(st.st_mode & S_IWUSR)) {
+      erros++;
+      log << "[ERRO] Sem permissao de escrita em: " << destino_path << std::endl;
+      codigo_final = ERRO_SEM_PERMISSAO;
+      continue;
+    }
+
+    const time_t data_destino = getFileModTime(dest_path);
+
+    if (data_destino > data_origem) {
+      erros++;
+      log << "[ERRO] Destino mais novo: " << dest_path << std::endl;
+      codigo_final = ERRO_DESTINO_MAIS_NOVO;
+      continue;
+    } else if (data_origem > data_destino) {
+      copiarArquivo(source_path, dest_path);
+      log << "[OK] COPIADO: " << nome_arquivo << std::endl;
+      copiados++;
+    } else {
+      log << "[IGNORADO] " << nome_arquivo << std::endl;
+      ignorados++;
+    }
+  }
+
+  // --- RESUMO FINAL ---
+  if (log.is_open()) {
+    log << "[RESUMO] "
+        << "Copiados: " << copiados
+        << " | Ignorados: " << ignorados
+        << " | Erros: " << erros
+        << std::endl;
+    log.flush();
+    log.close();
+  }
+
+  param_file.close();
+  return codigo_final;
+}
 /***************************************************************************
  * Função: realizaRestauracao
  ***************************************************************************/
 int realizaRestauracao(const std::string& origem_path) {
-  return processarTransferencia(origem_path, ".",
-                                0, ERRO_ORIGEM_MAIS_ANTIGA, "RESTAURACAO");
+  assert(!origem_path.empty());
+
+  std::ifstream param_file("Backup.parm");
+  if (!param_file.is_open()) return ERRO_BACKUP_PARM_NAO_EXISTE;
+
+  std::string nome_arquivo;
+  while (param_file >> nome_arquivo) {
+    const std::string source_path = origem_path + "/" + nome_arquivo;
+    const std::string dest_path = nome_arquivo;
+
+    const time_t data_origem = getFileModTime(source_path);
+    if (data_origem == 0) return ERRO_ARQUIVO_ORIGEM_NAO_EXISTE;
+
+    const time_t data_destino = getFileModTime(dest_path);
+
+    if (data_origem < data_destino) return ERRO_ORIGEM_MAIS_ANTIGA;
+    else if (data_origem > data_destino) copiarArquivo(source_path, dest_path);
+  }
+
+  return OPERACAO_SUCESSO;
 }

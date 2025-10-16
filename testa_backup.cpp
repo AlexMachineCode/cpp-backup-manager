@@ -157,12 +157,8 @@ TEST_CASE("Restauracao atualiza arquivo no HD se o pendrive for mais novo", "[re
 TEST_CASE("Backup gera erro se arquivo de origem nao existe", "[backup-erro-origem]") {
   mkdir("pendrive", 0777);
   std::ofstream("Backup.parm") << "arquivo_inexistente.txt";
-
-  // 💡 Garante que o arquivo realmente não existe antes do teste
   remove("arquivo_inexistente.txt");
-
   REQUIRE(realizaBackup("pendrive") == ERRO_ARQUIVO_ORIGEM_NAO_EXISTE);
-
   remove("Backup.parm");
   rmdir("pendrive");
 }
@@ -170,54 +166,35 @@ TEST_CASE("Backup gera erro se arquivo de origem nao existe", "[backup-erro-orig
 TEST_CASE("Restauracao gera erro se arquivo de origem nao existe", "[restauracao-erro-origem]") {
   mkdir("pendrive", 0777);
   std::ofstream("Backup.parm") << "arquivo_inexistente_rest.txt";
-
-  // 💡 Garante que o arquivo realmente não existe no pendrive
   remove("pendrive/arquivo_inexistente_rest.txt");
-
   REQUIRE(realizaRestauracao("pendrive") == ERRO_ARQUIVO_ORIGEM_NAO_EXISTE);
-
   remove("Backup.parm");
   rmdir("pendrive");
 }
 
 TEST_CASE("Backup gera erro se destino nao tiver permissao de escrita", "[backup-erro-permissao]") {
-  // --- PREPARAÇÃO ---
   mkdir("pendrive", 0777);
   std::ofstream("Backup.parm") << "arquivo_permissao.txt";
   std::ofstream("arquivo_permissao.txt") << "dados";
-
-  // Remove permissão de escrita do diretório de destino
   chmod("pendrive", 0555);
-
-  // --- AÇÃO ---
   int resultado = realizaBackup("pendrive");
-
-  // --- VERIFICAÇÃO ---
   REQUIRE(resultado == ERRO_SEM_PERMISSAO);
-
-  // --- LIMPEZA ---
-  chmod("pendrive", 0777);  // restaura permissão pra poder apagar
+  chmod("pendrive", 0777);
   remove("Backup.parm");
   remove("arquivo_permissao.txt");
   rmdir("pendrive");
 }
 
 TEST_CASE("Backup registra operacoes no arquivo de log", "[backup-log]") {
-  // --- PREPARAÇÃO ---
   mkdir("pendrive", 0777);
   std::ofstream("Backup.parm") << "arquivo_log.txt";
   std::ofstream("arquivo_log.txt") << "conteudo";
-
-  // Garante que o log não existe antes
   remove("Backup.log");
 
-  // --- AÇÃO ---
   realizaBackup("pendrive");
 
-  // --- VERIFICAÇÃO ---
   std::ifstream log("Backup.log");
-  REQUIRE(log.good());  // O log deve existir
-
+  REQUIRE(log.good());
   std::stringstream buffer;
   buffer << log.rdbuf();
   std::string conteudo_log = buffer.str();
@@ -225,7 +202,6 @@ TEST_CASE("Backup registra operacoes no arquivo de log", "[backup-log]") {
   REQUIRE(conteudo_log.find("arquivo_log.txt") != std::string::npos);
   REQUIRE(conteudo_log.find("COPIADO") != std::string::npos);
 
-  // --- LIMPEZA ---
   remove("Backup.parm");
   remove("arquivo_log.txt");
   remove("pendrive/arquivo_log.txt");
@@ -234,40 +210,25 @@ TEST_CASE("Backup registra operacoes no arquivo de log", "[backup-log]") {
 }
 
 TEST_CASE("Backup gera resumo no log com contagens corretas", "[backup-log-resumo]") {
-  // --- PREPARAÇÃO ---
   mkdir("pendrive", 0777);
   std::ofstream("Backup.parm") << "a.txt\nb.txt\nc.txt";
-
-  // Cria dois arquivos válidos
   std::ofstream("a.txt") << "conteudoA";
   std::ofstream("b.txt") << "conteudoB";
-  // Não cria "c.txt" para simular erro (origem inexistente)
-
-  // Limpa log anterior
   remove("Backup.log");
 
-  // --- EXECUÇÃO ---
   realizaBackup("pendrive");
 
-  // --- VERIFICAÇÃO ---
   std::ifstream log("Backup.log");
   REQUIRE(log.good());
 
-  std::string linha;
-  std::string ultima_linha;
+  std::string conteudo_log((std::istreambuf_iterator<char>(log)),
+                           std::istreambuf_iterator<char>());
 
-  // Lê o arquivo até o fim
-  while (std::getline(log, linha)) {
-    ultima_linha = linha;
-  }
+  REQUIRE(conteudo_log.find("[RESUMO]") != std::string::npos);
+  REQUIRE(conteudo_log.find("Copiados:") != std::string::npos);
+  REQUIRE(conteudo_log.find("Ignorados:") != std::string::npos);
+  REQUIRE(conteudo_log.find("Erros:") != std::string::npos);
 
-  // A última linha deve conter o resumo
-  REQUIRE(ultima_linha.find("[RESUMO]") != std::string::npos);
-  REQUIRE(ultima_linha.find("Copiados:") != std::string::npos);
-  REQUIRE(ultima_linha.find("Ignorados:") != std::string::npos);
-  REQUIRE(ultima_linha.find("Erros:") != std::string::npos);
-
-  // --- LIMPEZA ---
   remove("Backup.parm");
   remove("a.txt");
   remove("b.txt");
