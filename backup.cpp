@@ -1,26 +1,37 @@
 // Copyright 2025 Alex Batista Resende
 #include "backup.hpp"  // NOLINT
 
-#include <fstream>  // Necessário para manipulação de arquivos (ifstream)
+#include <fstream>  // Necessário para manipulação de arquivos
 #include <cassert>  // Necessário para usar assert()
 
-/**
- * @brief Executa a rotina de backup.
- * @details Verifica a existência do arquivo Backup.parm e, se existir,
- * prossegue com a lógica de backup.
- * @return OPERACAO_SUCESSO se o backup for concluído (ainda não implementado).
- * @return ERRO_BACKUP_PARM_NAO_EXISTE se o arquivo de parâmetros não for encontrado.
- */
-
+/******************************************************************************
+ * @brief Função: realizaBackup
+ *
+ * @details
+ * Inicia o processo de backup. A lógica é guiada pela Tabela de Decisão
+ * dos slides da aula. Esta implementação inicial cobre a primeira coluna da
+ * tabela: o que acontece se "Backup.parm" não existir.
+ *
+ * @return
+ * Retorna um código de status da enumeração StatusOperacao.
+ * - ERRO_BACKUP_PARM_NAO_EXISTE: Se o arquivo "Backup.parm" não for encontrado.
+ * - OPERACAO_SUCESSO: Nos outros casos (lógica futura).
+ *
+ * @assertiva-saida
+ * - Se a função retornar ERRO_BACKUP_PARM_NAO_EXISTE, o sistema de arquivos
+ * não foi modificado pela operação.
+ ******************************************************************************/
 int realizaBackup() {
-  // Tenta abrir o arquivo de parâmetros para leitura.
   std::ifstream param_file("Backup.parm");
 
-  // Se o arquivo não pôde ser aberto, ele não existe.
   if (!param_file.is_open()) {
     return ERRO_BACKUP_PARM_NAO_EXISTE;
   }
 
-  // Se o arquivo existe, por enquanto retornamos sucesso.
+  // Assertiva de saída implícita: se chegamos aqui, o arquivo deve estar aberto.
+  assert(param_file.is_open());
+
+  param_file.close();  // Boa prática: fechar o arquivo quando terminar de usá-lo.
+
   return OPERACAO_SUCESSO;
 }
