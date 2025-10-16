@@ -232,3 +232,21 @@ TEST_CASE("Backup gera erro se arquivo de origem nao existe", "[backup-erro-orig
   remove("Backup.parm");
   rmdir("pendrive");
 }
+
+TEST_CASE("Restauracao gera erro se arquivo de origem nao existe", "[restauracao-erro-origem]") {
+  // --- PREPARAÇÃO DO CENÁRIO ---
+  mkdir("pendrive", 0777);
+  std::ofstream("Backup.parm") << "arquivo_inexistente.txt";
+
+  // Garante que o arquivo de destino até poderia existir,
+  // mas o de origem (no pendrive) não será criado.
+  std::ofstream("arquivo_inexistente.txt") << "conteudo-antigo";
+
+  // --- AÇÃO E VERIFICAÇÃO ---
+  REQUIRE(realizaRestauracao("pendrive") == ERRO_ARQUIVO_ORIGEM_NAO_EXISTE);
+
+  // --- LIMPEZA ---
+  remove("Backup.parm");
+  remove("arquivo_inexistente.txt");
+  rmdir("pendrive");
+}
