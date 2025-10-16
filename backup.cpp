@@ -15,7 +15,18 @@ time_t getFileModTime(const std::string& path) {
   return 0;
 }
 
-// -- Função de Backup (sem alterações) --
+// --- NOVA FUNÇÃO AUXILIAR DE REFATORAÇÃO ---
+void copiarArquivo(const std::string& origem, const std::string& destino) {
+  std::ifstream src(origem, std::ios::binary);
+  assert(src.is_open());
+  std::ofstream dst(destino, std::ios::binary);
+  assert(dst.is_open());
+  dst << src.rdbuf();
+  src.close();
+  dst.close();
+}
+
+// -- Função de Backup (agora mais limpa) --
 int realizaBackup(const std::string& destino_path) {
   assert(!destino_path.empty());
   std::ifstream param_file("Backup.parm");
@@ -29,13 +40,7 @@ int realizaBackup(const std::string& destino_path) {
     time_t data_origem = getFileModTime(source_path);
     time_t data_destino = getFileModTime(dest_path);
     if (data_origem > data_destino) {
-      std::ifstream src(source_path, std::ios::binary);
-      assert(src.is_open());
-      std::ofstream dst(dest_path, std::ios::binary);
-      assert(dst.is_open());
-      dst << src.rdbuf();
-      src.close();
-      dst.close();
+      copiarArquivo(source_path, dest_path); // Usa a função auxiliar
     } else if (data_destino > data_origem) {
       param_file.close();
       return ERRO_DESTINO_MAIS_NOVO;
@@ -45,7 +50,7 @@ int realizaBackup(const std::string& destino_path) {
   return OPERACAO_SUCESSO;
 }
 
-// -- Função de Restauração (COM A NOVA LÓGICA DE CÓPIA) --
+// -- Função de Restauração (agora mais limpa) --
 int realizaRestauracao(const std::string& origem_path) {
   assert(!origem_path.empty());
   std::ifstream param_file("Backup.parm");
@@ -58,21 +63,12 @@ int realizaRestauracao(const std::string& origem_path) {
     std::string dest_path = nome_arquivo;
     time_t data_origem = getFileModTime(source_path);
     time_t data_destino = getFileModTime(dest_path);
-
     if (data_origem < data_destino) {
       param_file.close();
       return ERRO_ORIGEM_MAIS_ANTIGA;
     } else if (data_origem > data_destino) {
-      // LÓGICA NOVA: A origem é mais nova, então copia para o destino (HD).
-      std::ifstream src(source_path, std::ios::binary);
-      assert(src.is_open());
-      std::ofstream dst(dest_path, std::ios::binary);
-      assert(dst.is_open());
-      dst << src.rdbuf();
-      src.close();
-      dst.close();
+      copiarArquivo(source_path, dest_path); // Usa a função auxiliar
     }
-    // Se as datas forem iguais, não faz nada.
   }
   param_file.close();
   return OPERACAO_SUCESSO;
