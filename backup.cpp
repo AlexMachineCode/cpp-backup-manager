@@ -15,7 +15,7 @@ time_t getFileModTime(const std::string& path) {
   return 0;
 }
 
-// -- Função de Backup (CORRIGIDA) --
+// -- Função de Backup (COMPLETA E CORRIGIDA) --
 int realizaBackup(const std::string& destino_path) {
   assert(!destino_path.empty());
   std::ifstream param_file("Backup.parm");
@@ -45,7 +45,26 @@ int realizaBackup(const std::string& destino_path) {
   return OPERACAO_SUCESSO;  // <-- O RETURN QUE FALTAVA!
 }
 
-// -- Função de Restauração (CORRETA) --
+// -- Função de Restauração (COMPLETA E DOCUMENTADA) --
+/******************************************************************************
+ * @brief Função: realizaRestauracao
+ * @details
+ * Inicia o processo de restauração de arquivos de uma origem (pendrive) para
+ * o diretório local (HD). A lógica é guiada pela Tabela de Decisão.
+ *
+ * @param origem_path O caminho para o diretório de origem (o "pendrive").
+ *
+ * @return
+ * Retorna um código de status da enumeração StatusOperacao.
+ * - ERRO_ORIGEM_MAIS_ANTIGA: Se um arquivo na origem for mais antigo que o
+ * do destino durante uma restauração.
+ *
+ * @assertiva-entrada
+ * - origem_path não deve ser um caminho vazio.
+ *
+ * @assertiva-saida
+ * - Se retornar um erro, o diretório de destino (HD) não foi modificado.
+ ******************************************************************************/
 int realizaRestauracao(const std::string& origem_path) {
   assert(!origem_path.empty());
   std::ifstream param_file("Backup.parm");
