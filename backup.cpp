@@ -11,7 +11,7 @@
 #include <iostream>
 
 /***************************************************************************
- * Função: getFileModTime
+ * Função utilitária: getFileModTime
  ***************************************************************************/
 time_t getFileModTime(const std::string& path) {
   assert(!path.empty());
@@ -23,13 +23,13 @@ time_t getFileModTime(const std::string& path) {
 }
 
 /***************************************************************************
- * Função: copiarArquivo
+ * Função utilitária: copiarArquivo
  ***************************************************************************/
 void copiarArquivo(const std::string& origem, const std::string& destino) {
   assert(!origem.empty());
   assert(!destino.empty());
 
-  // Garante que o diretório de destino existe
+  // Garante que o diretório de destino exista
   size_t pos = destino.find_last_of('/');
   if (pos != std::string::npos) {
     std::string dir = destino.substr(0, pos);
@@ -50,7 +50,26 @@ void copiarArquivo(const std::string& origem, const std::string& destino) {
 }
 
 /***************************************************************************
- * Função: realizaBackup
+ * Funções auxiliares de log
+ ***************************************************************************/
+void logEvento(std::ofstream& log, const std::string& tipo, const std::string& msg) {
+  if (log.is_open()) {
+    log << "[" << tipo << "] " << msg << std::endl;
+  }
+}
+
+void logResumo(std::ofstream& log, int copiados, int ignorados, int erros) {
+  if (log.is_open()) {
+    log << "[RESUMO] "
+        << "Copiados: " << copiados
+        << " | Ignorados: " << ignorados
+        << " | Erros: " << erros
+        << std::endl;
+  }
+}
+
+/***************************************************************************
+ * Função principal: realizaBackup
  ***************************************************************************/
 int realizaBackup(const std::string& destino_path) {
   assert(!destino_path.empty());
@@ -70,15 +89,15 @@ int realizaBackup(const std::string& destino_path) {
     const time_t data_origem = getFileModTime(source_path);
     if (data_origem == 0) {
       erros++;
-      log << "[ERRO] Arquivo nao encontrado: " << source_path << std::endl;
+      logEvento(log, "ERRO", "Arquivo nao encontrado: " + source_path);
       codigo_final = ERRO_ARQUIVO_ORIGEM_NAO_EXISTE;
-      continue; // <--- IMPORTANTE: não sai da função
+      continue;
     }
 
     struct stat st;
     if (stat(destino_path.c_str(), &st) != 0 || !(st.st_mode & S_IWUSR)) {
       erros++;
-      log << "[ERRO] Sem permissao de escrita em: " << destino_path << std::endl;
+      logEvento(log, "ERRO", "Sem permissao de escrita em: " + destino_path);
       codigo_final = ERRO_SEM_PERMISSAO;
       continue;
     }
@@ -87,35 +106,28 @@ int realizaBackup(const std::string& destino_path) {
 
     if (data_destino > data_origem) {
       erros++;
-      log << "[ERRO] Destino mais novo: " << dest_path << std::endl;
+      logEvento(log, "ERRO", "Destino mais novo: " + dest_path);
       codigo_final = ERRO_DESTINO_MAIS_NOVO;
       continue;
     } else if (data_origem > data_destino) {
       copiarArquivo(source_path, dest_path);
-      log << "[OK] COPIADO: " << nome_arquivo << std::endl;
+      logEvento(log, "OK", "COPIADO: " + nome_arquivo);
       copiados++;
     } else {
-      log << "[IGNORADO] " << nome_arquivo << std::endl;
+      logEvento(log, "IGNORADO", nome_arquivo);
       ignorados++;
     }
   }
 
-  // --- RESUMO FINAL ---
-  if (log.is_open()) {
-    log << "[RESUMO] "
-        << "Copiados: " << copiados
-        << " | Ignorados: " << ignorados
-        << " | Erros: " << erros
-        << std::endl;
-    log.flush();
-    log.close();
-  }
-
+  logResumo(log, copiados, ignorados, erros);
+  log.close();
   param_file.close();
+
   return codigo_final;
 }
+
 /***************************************************************************
- * Função: realizaRestauracao
+ * Função principal: realizaRestauracao
  ***************************************************************************/
 int realizaRestauracao(const std::string& origem_path) {
   assert(!origem_path.empty());
@@ -133,8 +145,10 @@ int realizaRestauracao(const std::string& origem_path) {
 
     const time_t data_destino = getFileModTime(dest_path);
 
-    if (data_origem < data_destino) return ERRO_ORIGEM_MAIS_ANTIGA;
-    else if (data_origem > data_destino) copiarArquivo(source_path, dest_path);
+    if (data_origem < data_destino)
+      return ERRO_ORIGEM_MAIS_ANTIGA;
+    else if (data_origem > data_destino)
+      copiarArquivo(source_path, dest_path);
   }
 
   return OPERACAO_SUCESSO;
