@@ -119,3 +119,28 @@ TEST_CASE("Backup gera erro se arquivo de destino for mais novo", "[backup-erro-
   remove("pendrive/arquivo_conflito.txt");
   rmdir("pendrive");
 }
+
+TEST_CASE("Restauracao gera erro se arquivo de origem for mais antigo", "[restauracao-erro]") {
+  // --- PREPARAÇÃO DO CENÁRIO ---
+  mkdir("pendrive", 0777);
+  std::ofstream("Backup.parm") << "arquivo_rest.txt";
+
+  // 1. Cria a versão NOVA no destino (HD, ou a pasta atual).
+  std::ofstream("arquivo_rest.txt") << "conteudonovo";
+
+  // 2. ESPERA 1 SEGUNDO.
+  sleep(1);
+
+  // 3. Cria a versão ANTIGA na origem (Pendrive).
+  std::ofstream("pendrive/arquivo_rest.txt") << "conteudoantigo";
+
+  // --- AÇÃO E VERIFICAÇÃO ---
+  // A função deve detectar o conflito e retornar o novo código de erro.
+  REQUIRE(realizaRestauracao("pendrive") == ERRO_ORIGEM_MAIS_ANTIGA);
+
+  // --- LIMPEZA ---
+  remove("Backup.parm");
+  remove("arquivo_rest.txt");
+  remove("pendrive/arquivo_rest.txt");
+  rmdir("pendrive");
+}
