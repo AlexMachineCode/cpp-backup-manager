@@ -7,22 +7,12 @@
 #include <sys/stat.h>
 #include <ctime>
 
-/***************************************************************************
- * Função: getFileModTime
- * -------------------------------------------------------------------------
- * Descrição:
- *   Retorna o tempo de modificação de um arquivo no sistema.
- * Parâmetros:
- *   path - Caminho do arquivo a ser consultado.
- * Valor retornado:
- *   Tempo de modificação (time_t) ou 0 se o arquivo não existir.
- * Assertiva de entrada:
- *   path não deve ser string vazia.
- * Assertiva de saída:
- *   Retorno >= 0.
- ***************************************************************************/
+/**
+ * Retorna o tempo de modificação de um arquivo no sistema.
+ * @param path Caminho do arquivo a ser consultado.
+ * @return Tempo de modificação (time_t) ou 0 se o arquivo não existir.
+ */
 time_t getFileModTime(const std::string& path) {
-  assert(!path.empty());
   struct stat result;
   if (stat(path.c_str(), &result) == 0) {
     return result.st_mtime;
@@ -30,47 +20,28 @@ time_t getFileModTime(const std::string& path) {
   return 0;
 }
 
-/***************************************************************************
- * Função: copiarArquivo
- * -------------------------------------------------------------------------
- * Descrição:
- *   Copia o conteúdo de um arquivo de origem para um destino.
- * Parâmetros:
- *   origem  - Caminho do arquivo de origem.
- *   destino - Caminho do arquivo de destino.
- * Assertiva de entrada:
- *   origem e destino devem ser strings não vazias e acessíveis.
- * Assertiva de saída:
- *   O arquivo destino deve existir após a cópia.
- ***************************************************************************/
+/**
+ * Copia o conteúdo de um arquivo de origem para um destino.
+ * @param origem Caminho do arquivo de origem.
+ * @param destino Caminho do arquivo de destino.
+ */
 void copiarArquivo(const std::string& origem, const std::string& destino) {
-  assert(!origem.empty());
-  assert(!destino.empty());
   std::ifstream src(origem, std::ios::binary);
   assert(src.is_open());
   std::ofstream dst(destino, std::ios::binary);
   assert(dst.is_open());
   dst << src.rdbuf();
+  src.close();
+  dst.close();
 }
 
-/***************************************************************************
- * Função: realizaBackup
- * -------------------------------------------------------------------------
- * Descrição:
- *   Lê o arquivo "Backup.parm" e executa o backup dos arquivos listados,
- *   copiando-os para o diretório de destino informado.
- * Parâmetros:
- *   destino_path - Caminho do diretório onde os arquivos serão copiados.
- * Valor retornado:
- *   OPERACAO_SUCESSO                - se o backup foi realizado com êxito.
- *   ERRO_BACKUP_PARM_NAO_EXISTE     - se o arquivo "Backup.parm" não foi encontrado.
- *   ERRO_ARQUIVO_ORIGEM_NAO_EXISTE  - se algum arquivo de origem não existir.
- *   ERRO_DESTINO_MAIS_NOVO          - se o arquivo destino for mais novo que o de origem.
- * Assertiva de entrada:
- *   destino_path não é string vazia.
- * Assertiva de saída:
- *   Retorno corresponde a um valor definido no enum StatusOperacao.
- ***************************************************************************/
+/**
+ * Realiza o backup dos arquivos listados em "Backup.parm"
+ * para o diretório de destino informado.
+ *
+ * @param destino_path Caminho do diretório de destino.
+ * @return Código de status da operação.
+ */
 int realizaBackup(const std::string& destino_path) {
   assert(!destino_path.empty());
 
@@ -85,6 +56,8 @@ int realizaBackup(const std::string& destino_path) {
     const std::string dest_path = destino_path + "/" + nome_arquivo;
 
     const time_t data_origem = getFileModTime(source_path);
+
+    // 🔥 Correção: arquivo de origem inexistente
     if (data_origem == 0) {
       param_file.close();
       return ERRO_ARQUIVO_ORIGEM_NAO_EXISTE;
@@ -104,23 +77,13 @@ int realizaBackup(const std::string& destino_path) {
   return OPERACAO_SUCESSO;
 }
 
-/***************************************************************************
- * Função: realizaRestauracao
- * -------------------------------------------------------------------------
- * Descrição:
- *   Lê o arquivo "Backup.parm" e restaura os arquivos do diretório de origem
- *   (pendrive) para o diretório atual, respeitando as datas de modificação.
- * Parâmetros:
- *   origem_path - Caminho do diretório de origem (pendrive).
- * Valor retornado:
- *   OPERACAO_SUCESSO            - se a restauração for bem-sucedida.
- *   ERRO_BACKUP_PARM_NAO_EXISTE - se o arquivo "Backup.parm" não foi encontrado.
- *   ERRO_ORIGEM_MAIS_ANTIGA     - se a origem for mais antiga que o destino.
- * Assertiva de entrada:
- *   origem_path não é string vazia.
- * Assertiva de saída:
- *   Retorno corresponde a um valor definido no enum StatusOperacao.
- ***************************************************************************/
+/**
+ * Realiza a restauração dos arquivos a partir do diretório de origem (pendrive)
+ * para o diretório atual, respeitando as datas de modificação.
+ *
+ * @param origem_path Caminho do diretório de origem.
+ * @return Código de status da operação.
+ */
 int realizaRestauracao(const std::string& origem_path) {
   assert(!origem_path.empty());
 
@@ -135,6 +98,13 @@ int realizaRestauracao(const std::string& origem_path) {
     const std::string dest_path = nome_arquivo;
 
     const time_t data_origem = getFileModTime(source_path);
+
+    // 🔥 Correção: arquivo de origem inexistente
+    if (data_origem == 0) {
+      param_file.close();
+      return ERRO_ARQUIVO_ORIGEM_NAO_EXISTE;
+    }
+
     const time_t data_destino = getFileModTime(dest_path);
 
     if (data_origem < data_destino) {
