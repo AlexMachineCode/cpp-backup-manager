@@ -81,6 +81,8 @@ int realizaRestauracao(const std::string& origem_path) {
       param_file.close();
       return ERRO_ORIGEM_MAIS_ANTIGA;
     }
+    // NOTA: Se as datas forem iguais, (data_origem < data_destino) é falso
+    // e nada é feito, o que está correto para este caso ("Faz nada").
   }
   param_file.close();
   return OPERACAO_SUCESSO;
