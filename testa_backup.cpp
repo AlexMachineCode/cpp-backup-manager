@@ -185,3 +185,35 @@ TEST_CASE("Restauracao nao copia arquivos com datas iguais", "[restauracao-data-
   remove("pendrive/arquivo_rest_igual.txt");
   rmdir("pendrive");
 }
+
+TEST_CASE("Restauracao atualiza arquivo no HD se o pendrive for mais novo", "[restauracao-sucesso]") {
+  // --- PREPARAÇÃO DO CENÁRIO ---
+  mkdir("pendrive", 0777);
+  std::ofstream("Backup.parm") << "arquivo_rest_atualiza.txt";
+
+  // 1. Cria a versão ANTIGA no destino (HD).
+  std::ofstream("arquivo_rest_atualiza.txt") << "conteudo-antigo";
+
+  // 2. ESPERA 1 SEGUNDO.
+  sleep(1);
+
+  // 3. Cria a versão NOVA na origem (Pendrive).
+  std::ofstream("pendrive/arquivo_rest_atualiza.txt") << "conteudo-novo";
+
+  // --- AÇÃO ---
+  realizaRestauracao("pendrive");
+
+  // --- VERIFICAÇÃO ---
+  // A função deve ter copiado o arquivo, sobrescrevendo a versão antiga.
+  std::ifstream arquivo_final("arquivo_rest_atualiza.txt");
+  std::stringstream buffer;
+  buffer << arquivo_final.rdbuf();
+
+  REQUIRE(buffer.str() == "conteudo-novo");
+
+  // --- LIMPEZA ---
+  remove("Backup.parm");
+  remove("arquivo_rest_atualiza.txt");
+  remove("pendrive/arquivo_rest_atualiza.txt");
+  rmdir("pendrive");
+}
