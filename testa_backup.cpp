@@ -179,3 +179,25 @@ TEST_CASE("Restauracao gera erro se arquivo de origem nao existe", "[restauracao
   remove("Backup.parm");
   rmdir("pendrive");
 }
+
+TEST_CASE("Backup gera erro se destino nao tiver permissao de escrita", "[backup-erro-permissao]") {
+  // --- PREPARAÇÃO ---
+  mkdir("pendrive", 0777);
+  std::ofstream("Backup.parm") << "arquivo_permissao.txt";
+  std::ofstream("arquivo_permissao.txt") << "dados";
+
+  // Remove permissão de escrita do diretório de destino
+  chmod("pendrive", 0555);
+
+  // --- AÇÃO ---
+  int resultado = realizaBackup("pendrive");
+
+  // --- VERIFICAÇÃO ---
+  REQUIRE(resultado == ERRO_SEM_PERMISSAO);
+
+  // --- LIMPEZA ---
+  chmod("pendrive", 0777);  // restaura permissão pra poder apagar
+  remove("Backup.parm");
+  remove("arquivo_permissao.txt");
+  rmdir("pendrive");
+}
