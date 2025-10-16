@@ -9,6 +9,7 @@
 #include <sstream>      // Para ler o arquivo
 #include <sys/stat.h>
 #include <unistd.h>     // Para sleep()
+#include <utime.h>
 
 TEST_CASE("Backup falha quando Backup.parm nao existe", "[erros]") {
   remove("Backup.parm");
@@ -142,5 +143,44 @@ TEST_CASE("Restauracao gera erro se arquivo de origem for mais antigo", "[restau
   remove("Backup.parm");
   remove("arquivo_rest.txt");
   remove("pendrive/arquivo_rest.txt");
+  rmdir("pendrive");
+}
+
+TEST_CASE("Restauracao nao copia arquivos com datas iguais", "[restauracao-data-igual]") {
+  // --- PREPARAÇÃO DO CENÁRIO ---
+  mkdir("pendrive", 0777);
+  std::ofstream("Backup.parm") << "arquivo_rest_igual.txt";
+
+  // 1. Cria o arquivo de destino (HD) com um conteúdo.
+  std::ofstream("arquivo_rest_igual.txt") << "conteudo-HD";
+
+  // 2. Obtém a data de modificação do arquivo de destino.
+  time_t data_destino = getFileModTime("arquivo_rest_igual.txt");
+
+  // 3. Cria o arquivo de origem (Pendrive) com outro conteúdo.
+  std::ofstream("pendrive/arquivo_rest_igual.txt") << "conteudo-pendrive";
+
+  // 4. Força o arquivo de origem a ter a mesma data do destino.
+  //    (Isso requer a biblioteca <utime.h>)
+  struct utimbuf new_times;
+  new_times.actime = data_destino;
+  new_times.modtime = data_destino;
+  utime("pendrive/arquivo_rest_igual.txt", &new_times);
+
+  // --- AÇÃO ---
+  realizaRestauracao("pendrive");
+
+  // --- VERIFICAÇÃO ---
+  // A função não deve ter copiado, então o conteúdo do destino permanece o mesmo.
+  std::ifstream arquivo_final("arquivo_rest_igual.txt");
+  std::stringstream buffer;
+  buffer << arquivo_final.rdbuf();
+
+  REQUIRE(buffer.str() == "conteudo-HD");
+
+  // --- LIMPEZA ---
+  remove("Backup.parm");
+  remove("arquivo_rest_igual.txt");
+  remove("pendrive/arquivo_rest_igual.txt");
   rmdir("pendrive");
 }
