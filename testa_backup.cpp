@@ -201,3 +201,34 @@ TEST_CASE("Backup gera erro se destino nao tiver permissao de escrita", "[backup
   remove("arquivo_permissao.txt");
   rmdir("pendrive");
 }
+
+TEST_CASE("Backup registra operacoes no arquivo de log", "[backup-log]") {
+  // --- PREPARAÇÃO ---
+  mkdir("pendrive", 0777);
+  std::ofstream("Backup.parm") << "arquivo_log.txt";
+  std::ofstream("arquivo_log.txt") << "conteudo";
+
+  // Garante que o log não existe antes
+  remove("Backup.log");
+
+  // --- AÇÃO ---
+  realizaBackup("pendrive");
+
+  // --- VERIFICAÇÃO ---
+  std::ifstream log("Backup.log");
+  REQUIRE(log.good());  // O log deve existir
+
+  std::stringstream buffer;
+  buffer << log.rdbuf();
+  std::string conteudo_log = buffer.str();
+
+  REQUIRE(conteudo_log.find("arquivo_log.txt") != std::string::npos);
+  REQUIRE(conteudo_log.find("COPIADO") != std::string::npos);
+
+  // --- LIMPEZA ---
+  remove("Backup.parm");
+  remove("arquivo_log.txt");
+  remove("pendrive/arquivo_log.txt");
+  remove("Backup.log");
+  rmdir("pendrive");
+}
