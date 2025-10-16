@@ -19,13 +19,26 @@ time_t getFileModTime(const std::string& path) {
 /******************************************************************************
  * @brief Função: realizaBackup
  * @details
- * Inicia o processo de backup. Lê os arquivos do "Backup.parm" e os copia
- * para o destino se eles forem mais novos que a versão de destino.
+ * Inicia o processo de backup. Lê os arquivos do "Backup.parm", compara as
+ * datas de modificação com os arquivos no destino e age conforme a Tabela de
+ * Decisão.
  *
  * @param destino_path O caminho para o diretório de destino (o "pendrive").
  *
  * @return
- * Um código de status da enumeração StatusOperacao.
+ * Retorna um código de status da enumeração StatusOperacao.
+ * - ERRO_BACKUP_PARM_NAO_EXISTE: Se "Backup.parm" não for encontrado.
+ * - ERRO_DESTINO_MAIS_NOVO: Se um arquivo no destino for mais novo que o da
+ * origem durante um backup.
+ * - OPERACAO_SUCESSO: Se a operação for concluída.
+ *
+ * @assertiva-entrada
+ * - destino_path não deve ser um caminho vazio.
+ *
+ * @assertiva-saida
+ * - Se retornar SUCESSO, os arquivos no destino são tão ou mais novos que os
+ * da origem.
+ * - Se retornar um erro, o diretório de destino não foi modificado.
  ******************************************************************************/
 int realizaBackup(const std::string& destino_path) {
   assert(!destino_path.empty());
@@ -53,11 +66,11 @@ int realizaBackup(const std::string& destino_path) {
       src.close();
       dst.close();
     } else if (data_destino > data_origem) {
-      // LÓGICA NOVA: O destino é mais novo, isso é um erro no backup.
-      param_file.close(); // Fecha o arquivo antes de sair.
+      // O destino é mais novo, isso é um erro no backup.
+      param_file.close();  // Fecha o arquivo antes de sair.
       return ERRO_DESTINO_MAIS_NOVO;
     }
-    // Se as datas forem iguais, não faz nada, continua o loop.
+    // NOTA: Se as datas forem iguais, nada acontece, o que está correto.
   }
 
   param_file.close();
