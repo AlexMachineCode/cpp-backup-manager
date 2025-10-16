@@ -41,7 +41,7 @@ TEST_CASE("Backup sobrescreve arquivo antigo no Pendrive", "[backup-atualiza]") 
   std::ofstream("pendrive/arquivo_modificado.txt") << "conteudoantigo";
 
   // 2. ESPERA 1 SEGUNDO para garantir que a próxima data será diferente.
- 
+  sleep(1);
 
   // 3. Cria a versão NOVA na origem.
   std::ofstream("arquivo_modificado.txt") << "conteudonovo";
