@@ -5,7 +5,7 @@
 #include <fstream>
 #include <cassert>
 #include <sys/stat.h>
-#include <unistd.h>  // para acesso a permissões
+#include <unistd.h>  // Para função access()
 #include <ctime>
 
 /***************************************************************************
@@ -38,34 +38,56 @@ void copiarArquivo(const std::string& origem, const std::string& destino) {
 }
 
 /***************************************************************************
- * Função auxiliar: possuiPermissaoEscrita
+ * Função: possuiPermissaoEscrita
  * -------------------------------------------------------------------------
- * Verifica se o processo atual tem permissão de escrita no diretório dado.
+ * Verifica se o processo atual tem permissão de escrita em um diretório.
+ * Parâmetros:
+ *   diretorio - Caminho do diretório a ser verificado.
+ * Retorno:
+ *   true  - se o processo tiver permissão de escrita.
+ *   false - caso contrário.
  ***************************************************************************/
 bool possuiPermissaoEscrita(const std::string& diretorio) {
+  assert(!diretorio.empty());
   return (access(diretorio.c_str(), W_OK) == 0);
+}
+
+/***************************************************************************
+ * Função: validarDestino
+ * -------------------------------------------------------------------------
+ * Realiza todas as verificações de pré-condição sobre o destino:
+ *  - Existência de permissão de escrita.
+ *  - Existência do arquivo de parâmetros.
+ * Caso alguma falhe, retorna o código de erro apropriado.
+ ***************************************************************************/
+int validarDestino(const std::string& destino) {
+  if (!possuiPermissaoEscrita(destino)) {
+    return ERRO_SEM_PERMISSAO;
+  }
+  std::ifstream parm("Backup.parm");
+  if (!parm.is_open()) {
+    return ERRO_BACKUP_PARM_NAO_EXISTE;
+  }
+  return OPERACAO_SUCESSO;
 }
 
 /***************************************************************************
  * Função auxiliar: processarTransferencia
  * -------------------------------------------------------------------------
- * Generaliza a lógica de backup/restauração, incluindo validações de erro.
+ * Generaliza a lógica comum de backup/restauração,
+ * incluindo validações de permissão, existência e data.
  ***************************************************************************/
 int processarTransferencia(const std::string& origem, const std::string& destino,
                            int erroMaisNovo, int erroMaisAntigo) {
   assert(!origem.empty());
   assert(!destino.empty());
 
+  int validacao = validarDestino(destino);
+  if (validacao != OPERACAO_SUCESSO) return validacao;
+
   std::ifstream param_file("Backup.parm");
-  if (!param_file.is_open()) return ERRO_BACKUP_PARM_NAO_EXISTE;
-
-  // 🔒 Verificação de permissão de escrita
-  if (!possuiPermissaoEscrita(destino)) {
-    param_file.close();
-    return ERRO_SEM_PERMISSAO;
-  }
-
   std::string nome_arquivo;
+
   while (param_file >> nome_arquivo) {
     const std::string path_origem = origem + "/" + nome_arquivo;
     const std::string path_destino = destino + "/" + nome_arquivo;
