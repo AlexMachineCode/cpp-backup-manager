@@ -2,6 +2,8 @@
 #ifndef BACKUP_HPP_
 #define BACKUP_HPP_
 
+#include <string>
+
 // Enum para os códigos de status da operação
 enum StatusOperacao {
   OPERACAO_SUCESSO,
@@ -9,6 +11,6 @@ enum StatusOperacao {
 };
 
 // Apenas a DECLARAÇÃO da função. O corpo dela vai no .cpp
-int realizaBackup();
+int realizaBackup(const std::string& destino_path);
 
 #endif  // BACKUP_HPP_
