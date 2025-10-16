@@ -18,6 +18,7 @@ enum StatusOperacao {
 // Declaração das funções
 int realizaBackup(const std::string& destino_path);
 int realizaRestauracao(const std::string& origem_path);
+void registrarLog(const std::string& arquivo, const std::string& mensagem);
 
 // Declaração da função auxiliar para que outros arquivos a conheçam
 time_t getFileModTime(const std::string& path);

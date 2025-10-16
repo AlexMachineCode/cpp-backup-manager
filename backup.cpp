@@ -7,6 +7,8 @@
 #include <sys/stat.h>
 #include <unistd.h>  // Para função access()
 #include <ctime>
+#include <iomanip>   // Para std::put_time
+#include <sstream>
 
 /***************************************************************************
  * Função: getFileModTime
@@ -41,11 +43,6 @@ void copiarArquivo(const std::string& origem, const std::string& destino) {
  * Função: possuiPermissaoEscrita
  * -------------------------------------------------------------------------
  * Verifica se o processo atual tem permissão de escrita em um diretório.
- * Parâmetros:
- *   diretorio - Caminho do diretório a ser verificado.
- * Retorno:
- *   true  - se o processo tiver permissão de escrita.
- *   false - caso contrário.
  ***************************************************************************/
 bool possuiPermissaoEscrita(const std::string& diretorio) {
   assert(!diretorio.empty());
@@ -53,41 +50,46 @@ bool possuiPermissaoEscrita(const std::string& diretorio) {
 }
 
 /***************************************************************************
- * Função: validarDestino
+ * Função: registrarLog
  * -------------------------------------------------------------------------
- * Realiza todas as verificações de pré-condição sobre o destino:
- *  - Existência de permissão de escrita.
- *  - Existência do arquivo de parâmetros.
- * Caso alguma falhe, retorna o código de erro apropriado.
+ * Registra uma linha no arquivo Backup.log, contendo:
+ *   [timestamp] nome_do_arquivo - mensagem
  ***************************************************************************/
-int validarDestino(const std::string& destino) {
-  if (!possuiPermissaoEscrita(destino)) {
-    return ERRO_SEM_PERMISSAO;
-  }
-  std::ifstream parm("Backup.parm");
-  if (!parm.is_open()) {
-    return ERRO_BACKUP_PARM_NAO_EXISTE;
-  }
-  return OPERACAO_SUCESSO;
+void registrarLog(const std::string& arquivo, const std::string& mensagem) {
+  std::ofstream log("Backup.log", std::ios::app);
+  if (!log.is_open()) return;
+
+  // Obtém data/hora atual formatada
+  std::time_t agora = std::time(nullptr);
+  std::tm* tempo = std::localtime(&agora);
+  log << "[" << std::put_time(tempo, "%d/%m/%Y %H:%M:%S") << "] "
+      << arquivo << " - " << mensagem << std::endl;
 }
 
 /***************************************************************************
  * Função auxiliar: processarTransferencia
  * -------------------------------------------------------------------------
  * Generaliza a lógica comum de backup/restauração,
- * incluindo validações de permissão, existência e data.
+ * incluindo validações de permissão, existência, data e logs.
  ***************************************************************************/
 int processarTransferencia(const std::string& origem, const std::string& destino,
                            int erroMaisNovo, int erroMaisAntigo) {
   assert(!origem.empty());
   assert(!destino.empty());
 
-  int validacao = validarDestino(destino);
-  if (validacao != OPERACAO_SUCESSO) return validacao;
-
   std::ifstream param_file("Backup.parm");
-  std::string nome_arquivo;
+  if (!param_file.is_open()) {
+    registrarLog("Backup.parm", "ERRO: arquivo de parametros nao encontrado");
+    return ERRO_BACKUP_PARM_NAO_EXISTE;
+  }
 
+  if (!possuiPermissaoEscrita(destino)) {
+    registrarLog(destino, "ERRO: sem permissao de escrita");
+    param_file.close();
+    return ERRO_SEM_PERMISSAO;
+  }
+
+  std::string nome_arquivo;
   while (param_file >> nome_arquivo) {
     const std::string path_origem = origem + "/" + nome_arquivo;
     const std::string path_destino = destino + "/" + nome_arquivo;
@@ -96,15 +98,20 @@ int processarTransferencia(const std::string& origem, const std::string& destino
     const time_t data_destino = getFileModTime(path_destino);
 
     if (data_origem == 0) {
+      registrarLog(nome_arquivo, "ERRO: arquivo de origem inexistente");
       param_file.close();
       return ERRO_ARQUIVO_ORIGEM_NAO_EXISTE;
     }
 
     if (data_origem > data_destino) {
       copiarArquivo(path_origem, path_destino);
+      registrarLog(nome_arquivo, "COPIADO");
     } else if (data_destino > data_origem) {
+      registrarLog(nome_arquivo, "IGNORADO (destino mais novo)");
       param_file.close();
       return (erroMaisNovo != 0) ? erroMaisNovo : erroMaisAntigo;
+    } else {
+      registrarLog(nome_arquivo, "IGNORADO (datas iguais)");
     }
   }
 
