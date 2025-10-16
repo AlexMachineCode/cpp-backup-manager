@@ -175,6 +175,7 @@ TEST_CASE("Restauracao nao copia arquivos com datas iguais", "[restauracao-data-
   std::ifstream arquivo_final("arquivo_rest_igual.txt");
   std::stringstream buffer;
   buffer << arquivo_final.rdbuf();
+  arquivo_final.close();
 
   REQUIRE(buffer.str() == "conteudo-HD");
 
