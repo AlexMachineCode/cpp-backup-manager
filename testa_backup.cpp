@@ -217,3 +217,18 @@ TEST_CASE("Restauracao atualiza arquivo no HD se o pendrive for mais novo", "[re
   remove("pendrive/arquivo_rest_atualiza.txt");
   rmdir("pendrive");
 }
+
+TEST_CASE("Backup gera erro se arquivo de origem nao existe", "[backup-erro-origem]") {
+  // --- PREPARAÇÃO DO CENÁRIO ---
+  mkdir("pendrive", 0777);
+  // 1. O Backup.parm aponta para um arquivo que não vamos criar.
+  std::ofstream("Backup.parm") << "arquivo_inexistente.txt";
+
+  // --- AÇÃO E VERIFICAÇÃO ---
+  // A função deve detectar que o arquivo não existe e retornar o erro.
+  REQUIRE(realizaBackup("pendrive") == ERRO_ARQUIVO_ORIGEM_NAO_EXISTE);
+
+  // --- LIMPEZA ---
+  remove("Backup.parm");
+  rmdir("pendrive");
+}
