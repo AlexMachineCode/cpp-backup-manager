@@ -8,7 +8,7 @@
 enum StatusOperacao {
   OPERACAO_SUCESSO,
   ERRO_BACKUP_PARM_NAO_EXISTE
- 
+  ERRO_DESTINO_MAIS_NOVO
 };
 
 // Apenas a DECLARAÇÃO da função. O corpo dela vai no .cpp

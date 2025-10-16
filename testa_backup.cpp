@@ -94,3 +94,28 @@ TEST_CASE("Backup nao copia arquivos com datas iguais", "[backup-data-igual]") {
   remove("pendrive/arquivo_data_igual.txt");
   rmdir("pendrive");
 }
+
+TEST_CASE("Backup gera erro se arquivo de destino for mais novo", "[backup-erro-data]") {
+  // --- PREPARAÇÃO DO CENÁRIO ---
+  mkdir("pendrive", 0777);
+  std::ofstream("Backup.parm") << "arquivo_conflito.txt";
+
+  // 1. Cria a versão ANTIGA na origem primeiro.
+  std::ofstream("arquivo_conflito.txt") << "conteudoantigo";
+
+  // 2. ESPERA 1 SEGUNDO para garantir que a próxima data será diferente.
+  sleep(1);
+
+  // 3. Cria a versão NOVA no destino.
+  std::ofstream("pendrive/arquivo_conflito.txt") << "conteudonovo";
+
+  // --- AÇÃO E VERIFICAÇÃO ---
+  // A função deve detectar o conflito e retornar o novo código de erro.
+  REQUIRE(realizaBackup("pendrive") == ERRO_DESTINO_MAIS_NOVO);
+
+  // --- LIMPEZA ---
+  remove("Backup.parm");
+  remove("arquivo_conflito.txt");
+  remove("pendrive/arquivo_conflito.txt");
+  rmdir("pendrive");
+}
