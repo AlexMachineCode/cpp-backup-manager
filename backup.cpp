@@ -5,9 +5,9 @@
 #include <fstream>
 #include <cassert>
 #include <sys/stat.h>
-#include <unistd.h>  // Para função access()
+#include <unistd.h>   // Para função access()
 #include <ctime>
-#include <iomanip>   // Para std::put_time
+#include <iomanip>    // Para std::put_time
 #include <sstream>
 
 /***************************************************************************
@@ -50,20 +50,36 @@ bool possuiPermissaoEscrita(const std::string& diretorio) {
 }
 
 /***************************************************************************
+ * Função: obterTimestampAtual
+ * -------------------------------------------------------------------------
+ * Retorna a data/hora atual formatada no padrão dd/mm/yyyy HH:MM:SS.
+ ***************************************************************************/
+std::string obterTimestampAtual() {
+  std::ostringstream os;
+  std::time_t agora = std::time(nullptr);
+  std::tm* tempo = std::localtime(&agora);
+  os << std::put_time(tempo, "%d/%m/%Y %H:%M:%S");
+  return os.str();
+}
+
+/***************************************************************************
  * Função: registrarLog
  * -------------------------------------------------------------------------
- * Registra uma linha no arquivo Backup.log, contendo:
- *   [timestamp] nome_do_arquivo - mensagem
+ * Registra uma linha no arquivo Backup.log, padronizando o formato.
+ * Parâmetros:
+ *   contexto  - Tipo de operação ("BACKUP" ou "RESTAURACAO")
+ *   arquivo   - Nome do arquivo afetado
+ *   mensagem  - Resultado textual (ex: "COPIADO", "IGNORADO", "ERRO...")
  ***************************************************************************/
-void registrarLog(const std::string& arquivo, const std::string& mensagem) {
+void registrarLog(const std::string& contexto,
+                  const std::string& arquivo,
+                  const std::string& mensagem) {
   std::ofstream log("Backup.log", std::ios::app);
   if (!log.is_open()) return;
 
-  // Obtém data/hora atual formatada
-  std::time_t agora = std::time(nullptr);
-  std::tm* tempo = std::localtime(&agora);
-  log << "[" << std::put_time(tempo, "%d/%m/%Y %H:%M:%S") << "] "
-      << arquivo << " - " << mensagem << std::endl;
+  log << "[" << obterTimestampAtual() << "] "
+      << "[" << contexto << "] "
+      << arquivo << " → " << mensagem << std::endl;
 }
 
 /***************************************************************************
@@ -72,19 +88,23 @@ void registrarLog(const std::string& arquivo, const std::string& mensagem) {
  * Generaliza a lógica comum de backup/restauração,
  * incluindo validações de permissão, existência, data e logs.
  ***************************************************************************/
-int processarTransferencia(const std::string& origem, const std::string& destino,
-                           int erroMaisNovo, int erroMaisAntigo) {
+int processarTransferencia(const std::string& origem,
+                           const std::string& destino,
+                           int erroMaisNovo,
+                           int erroMaisAntigo,
+                           const std::string& contexto) {
   assert(!origem.empty());
   assert(!destino.empty());
 
   std::ifstream param_file("Backup.parm");
   if (!param_file.is_open()) {
-    registrarLog("Backup.parm", "ERRO: arquivo de parametros nao encontrado");
+    registrarLog(contexto, "Backup.parm",
+                 "ERRO: arquivo de parametros nao encontrado");
     return ERRO_BACKUP_PARM_NAO_EXISTE;
   }
 
   if (!possuiPermissaoEscrita(destino)) {
-    registrarLog(destino, "ERRO: sem permissao de escrita");
+    registrarLog(contexto, destino, "ERRO: sem permissao de escrita");
     param_file.close();
     return ERRO_SEM_PERMISSAO;
   }
@@ -98,20 +118,21 @@ int processarTransferencia(const std::string& origem, const std::string& destino
     const time_t data_destino = getFileModTime(path_destino);
 
     if (data_origem == 0) {
-      registrarLog(nome_arquivo, "ERRO: arquivo de origem inexistente");
+      registrarLog(contexto, nome_arquivo,
+                   "ERRO: arquivo de origem inexistente");
       param_file.close();
       return ERRO_ARQUIVO_ORIGEM_NAO_EXISTE;
     }
 
     if (data_origem > data_destino) {
       copiarArquivo(path_origem, path_destino);
-      registrarLog(nome_arquivo, "COPIADO");
+      registrarLog(contexto, nome_arquivo, "COPIADO");
     } else if (data_destino > data_origem) {
-      registrarLog(nome_arquivo, "IGNORADO (destino mais novo)");
+      registrarLog(contexto, nome_arquivo, "IGNORADO (destino mais novo)");
       param_file.close();
       return (erroMaisNovo != 0) ? erroMaisNovo : erroMaisAntigo;
     } else {
-      registrarLog(nome_arquivo, "IGNORADO (datas iguais)");
+      registrarLog(contexto, nome_arquivo, "IGNORADO (datas iguais)");
     }
   }
 
@@ -124,7 +145,7 @@ int processarTransferencia(const std::string& origem, const std::string& destino
  ***************************************************************************/
 int realizaBackup(const std::string& destino_path) {
   return processarTransferencia(".", destino_path,
-                                ERRO_DESTINO_MAIS_NOVO, 0);
+                                ERRO_DESTINO_MAIS_NOVO, 0, "BACKUP");
 }
 
 /***************************************************************************
@@ -132,5 +153,5 @@ int realizaBackup(const std::string& destino_path) {
  ***************************************************************************/
 int realizaRestauracao(const std::string& origem_path) {
   return processarTransferencia(origem_path, ".",
-                                0, ERRO_ORIGEM_MAIS_ANTIGA);
+                                0, ERRO_ORIGEM_MAIS_ANTIGA, "RESTAURACAO");
 }

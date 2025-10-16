@@ -232,3 +232,47 @@ TEST_CASE("Backup registra operacoes no arquivo de log", "[backup-log]") {
   remove("Backup.log");
   rmdir("pendrive");
 }
+
+TEST_CASE("Backup gera resumo no log com contagens corretas", "[backup-log-resumo]") {
+  // --- PREPARAÇÃO ---
+  mkdir("pendrive", 0777);
+  std::ofstream("Backup.parm") << "a.txt\nb.txt\nc.txt";
+
+  // Cria dois arquivos válidos
+  std::ofstream("a.txt") << "conteudoA";
+  std::ofstream("b.txt") << "conteudoB";
+  // Não cria "c.txt" para simular erro (origem inexistente)
+
+  // Limpa log anterior
+  remove("Backup.log");
+
+  // --- EXECUÇÃO ---
+  realizaBackup("pendrive");
+
+  // --- VERIFICAÇÃO ---
+  std::ifstream log("Backup.log");
+  REQUIRE(log.good());
+
+  std::string linha;
+  std::string ultima_linha;
+
+  // Lê o arquivo até o fim
+  while (std::getline(log, linha)) {
+    ultima_linha = linha;
+  }
+
+  // A última linha deve conter o resumo
+  REQUIRE(ultima_linha.find("[RESUMO]") != std::string::npos);
+  REQUIRE(ultima_linha.find("Copiados:") != std::string::npos);
+  REQUIRE(ultima_linha.find("Ignorados:") != std::string::npos);
+  REQUIRE(ultima_linha.find("Erros:") != std::string::npos);
+
+  // --- LIMPEZA ---
+  remove("Backup.parm");
+  remove("a.txt");
+  remove("b.txt");
+  remove("pendrive/a.txt");
+  remove("pendrive/b.txt");
+  rmdir("pendrive");
+  remove("Backup.log");
+}
