@@ -4,15 +4,18 @@
 #include <string>
 #include <fstream>
 #include <cassert>
+#include <sys/stat.h>
+#include <ctime>
 
-/******************************************************************************
- * @brief Função: realizaBackup
- * @details Inicia o processo de backup.
- * @param destino_path O caminho para o diretório de destino (o "pendrive").
- * @return Um código de status da enumeração StatusOperacao.
- ******************************************************************************/
+int getFileModTime(const std::string& path) {
+  struct stat result;
+  if (stat(path.c_str(), &result) == 0) {
+    return result.st_mtime;
+  }
+  return 0;
+}
+
 int realizaBackup(const std::string& destino_path) {
-  // Assertiva de Entrada: Garante que o caminho de destino não é vazio.
   assert(!destino_path.empty());
 
   std::ifstream param_file("Backup.parm");
@@ -20,33 +23,21 @@ int realizaBackup(const std::string& destino_path) {
     return ERRO_BACKUP_PARM_NAO_EXISTE;
   }
 
-  std::string nome_arquivo_a_copiar;
-  while (param_file >> nome_arquivo_a_copiar) {
-    std::string source_path = nome_arquivo_a_copiar;
-    std::string dest_path = destino_path + "/" + nome_arquivo_a_copiar;
+  std::string nome_arquivo;
+  while (param_file >> nome_arquivo) {
+    std::string source_path = nome_arquivo;
+    std::string dest_path = destino_path + "/" + nome_arquivo;
 
-    // --- LÓGICA TEMPORÁRIA PARA FORÇAR A FALHA ---
-    // Verifica se o arquivo de destino já existe para não sobrescrevê-lo.
-    std::ifstream arquivo_existente(dest_path);
-    if (arquivo_existente.is_open()) {
-      arquivo_existente.close();
-      continue;  // Pula para o próximo arquivo se o destino já existe.
-    }
-    // --- FIM DA LÓGICA TEMPORÁRIA ---
-
+    // LÓGICA SIMPLES (FIX): Apenas sobrescreve
     std::ifstream src(source_path, std::ios::binary);
     assert(src.is_open());
-
     std::ofstream dst(dest_path, std::ios::binary);
     assert(dst.is_open());
-
     dst << src.rdbuf();
-
     src.close();
     dst.close();
   }
 
   param_file.close();
-
   return OPERACAO_SUCESSO;
 }
