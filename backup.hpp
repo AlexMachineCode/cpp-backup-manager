@@ -7,7 +7,7 @@
 // Enum para os códigos de status da operação
 enum StatusOperacao {
   OPERACAO_SUCESSO,
-  ERRO_BACKUP_PARM_NAO_EXISTE
+  ERRO_BACKUP_PARM_NAO_EXISTE,
   ERRO_DESTINO_MAIS_NOVO
 };
 

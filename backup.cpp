@@ -26,12 +26,6 @@ time_t getFileModTime(const std::string& path) {
  *
  * @return
  * Um código de status da enumeração StatusOperacao.
- *
- * @assertiva-entrada
- * - destino_path não deve ser um caminho vazio.
- *
- * @assertiva-saida
- * - Os arquivos no destino são tão ou mais novos que os da origem.
  ******************************************************************************/
 int realizaBackup(const std::string& destino_path) {
   assert(!destino_path.empty());
@@ -49,23 +43,21 @@ int realizaBackup(const std::string& destino_path) {
     time_t data_origem = getFileModTime(source_path);
     time_t data_destino = getFileModTime(dest_path);
 
-    // A cópia só ocorre se o arquivo de destino não existe (data 0)
-    // ou se a data do arquivo de origem for mais recente.
     if (data_origem > data_destino) {
+      // A origem é mais nova, então copia.
       std::ifstream src(source_path, std::ios::binary);
       assert(src.is_open());
-
       std::ofstream dst(dest_path, std::ios::binary);
       assert(dst.is_open());
-
       dst << src.rdbuf();
-
       src.close();
       dst.close();
+    } else if (data_destino > data_origem) {
+      // LÓGICA NOVA: O destino é mais novo, isso é um erro no backup.
+      param_file.close(); // Fecha o arquivo antes de sair.
+      return ERRO_DESTINO_MAIS_NOVO;
     }
-    // NOTA DA REFATORAÇÃO: Se as datas forem iguais, (data_origem > data_destino)
-    // é falso, e a cópia não é realizada. Isso está correto
-    // conforme a Coluna 4 da Tabela de Decisão ("Faz nada").
+    // Se as datas forem iguais, não faz nada, continua o loop.
   }
 
   param_file.close();
