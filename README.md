@@ -1,7 +1,7 @@
 # 🧰 C++ Backup Manager
 
 Um sistema de **backup e restauração de arquivos** desenvolvido em **C++**, com foco em **segurança, robustez e testes automatizados**.  
-Este projeto foi desenvolvido como parte de um trabalho acadêmico, mas estruturado seguindo boas práticas de engenharia de software, tornando-o adequado para portfólio.
+Este projeto foi desenvolvido como parte de um trabalho acadêmico, mas estruturado seguindo boas práticas de engenharia de software.
 
 ---
 
